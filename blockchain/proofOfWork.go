@@ -49,7 +49,7 @@ func (proofOfWork *ProofOfWork) NewInitData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			proofOfWork.Block.LastHash,
-			proofOfWork.Block.Data,
+			proofOfWork.Block.HashTransaction(),
 			ToHex(int64(nonce)),
 			ToHex(int64(Difficulty)),
 		},

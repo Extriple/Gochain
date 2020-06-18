@@ -1,21 +1,36 @@
 package blockchain
 
-//Struktura blockchaina
-type Blockchain struct {
-	Blocks []*Block
-}
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
+	"log"
+)
 
 // Struktura bloku
 type Block struct {
-	Hash     []byte
-	Data     []byte
-	LastHash []byte
-	Nonce    int
+	Hash        []byte
+	Transaction []*Transaction
+	LastHash    []byte
+	Nonce       int
+}
+
+//Metoda, która uwzględnia algorytm proof of work w stosunku do transackji 
+func (b *Block) HashTransaction() []byte {
+	var  transacHash [32]byte
+	var transacHashes [][]byte
+
+	for _, transac := range b.Transaction{
+		transacHashes = append(transacHashes, transac.ID)
+	}
+	transacHash = sha256.Sum256(bytes.Join(transacHashes, []byte{}))
+
+	return transacHash[:]
 }
 
 //Metoda, która tworzy nowy blok
-func CreateNewBlock(data string, lastHash []byte) *Block {
-	block := &Block{[]byte{}, []byte(data), lastHash, 0}
+func CreateNewBlock(tranc []*Transaction, lastHash []byte) *Block {
+	block := &Block{[]byte{}, tranc, lastHash, 0}
 	proofOfWork := StatNewProof(block)
 	nonce, hash := proofOfWork.Run()
 
@@ -25,19 +40,40 @@ func CreateNewBlock(data string, lastHash []byte) *Block {
 	return block
 }
 
-//Metoda, która dodaje nowo powstały blok do blockchaina
-func (chain *Blockchain) AddBlocks(data string) {
-	lastBlock := chain.Blocks[len(chain.Blocks)-1]
-	new := CreateNewBlock(data, lastBlock.Hash)
-	chain.Blocks = append(chain.Blocks, new)
-}
-
 //Genesis
-func Genesis() *Block {
-	return CreateNewBlock("Genesis", []byte{})
+func Genesis(Cryptobase *Transaction) *Block {
+	return CreateNewBlock([]*Transaction{Cryptobase}, []byte{})
 }
 
-//Metoda, która zespala wszystkie wyżej wymienione bloki i tworzy naszego blockchaina
-func InitBlockchain() *Blockchain {
-	return &Blockchain{[]*Block{Genesis()}}
+// Funckje serializacji i deserializacji danych
+func (b *Block) Serialize() []byte {
+	var buffor bytes.Buffer
+	encoder := gob.NewEncoder(&buffor)
+
+	err := encoder.Encode(b)
+
+	Handle(err)
+
+	//zwracamy bajtową cześć naszego wyniku
+	return buffor.Bytes()
+}
+
+func Deserialize(data []byte) *Block {
+	var block Block
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+
+	err := decoder.Decode(&block)
+
+	Handle(err)
+
+	return &block
+
+}
+
+//Funckja pomocnicza wywołująca error/ funckja skrótowa.
+func Handle(err error) {
+	if err != nil {
+		log.Panic(err)
+	}
 }
